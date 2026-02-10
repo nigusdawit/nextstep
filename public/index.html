@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -120,7 +120,7 @@
             border-color: var(--white);
         }
 
-        /* --- NAVIGATION (UPDATED) --- */
+        /* --- NAVIGATION --- */
         .navbar {
             background: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(12px);
@@ -128,7 +128,6 @@
             position: sticky;
             top: 0;
             z-index: 1000;
-            /* REDUCED PADDING to offset larger logo */
             padding: 0.5rem 0; 
         }
 
@@ -136,12 +135,10 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            /* Ensures items stay centered vertically */
             height: 100%; 
         }
 
         .logo-img {
-            /* INCREASED SIZE */
             height: 65px; 
             width: auto;
             display: block;
@@ -181,12 +178,12 @@
             transform: translateY(-1px);
         }
 
-        /* --- HERO SECTION --- */
+        /* --- HERO SECTION & CANVAS --- */
         .hero {
             position: relative;
             background-color: var(--navy);
             color: var(--white);
-            min-height: 90vh; /* Full impactful height */
+            min-height: 90vh; 
             display: flex;
             align-items: center;
             overflow: hidden;
@@ -199,16 +196,26 @@
             width: 100%;
             height: 100%;
             z-index: 1;
-            /* Slightly clearer opacity for the new colorful animation */
-            opacity: 1; 
+        }
+
+        /* IMPORTANT FIX FOR MOBILE SCROLLING */
+        canvas {
+            display: block;
+            /* Allows vertical scrolling even if touching the canvas */
+            touch-action: pan-y; 
         }
 
         .hero-content {
             position: relative;
             z-index: 2;
             max-width: 800px;
-            /* Add a subtle glass effect behind text to ensure readability over animation */
-            /* text-shadow: 0 2px 10px rgba(0,0,0,0.3); */
+            /* Ensures text is clickable over canvas */
+            pointer-events: none; 
+        }
+        
+        /* Re-enable pointer events for buttons/links inside hero */
+        .hero-content a, .hero-content button {
+            pointer-events: auto;
         }
 
         .hero h1 {
@@ -557,7 +564,6 @@
             overflow: hidden;
         }
 
-        /* Subtle design element for contact bg */
         .contact-section::before {
             content: '';
             position: absolute;
@@ -667,8 +673,6 @@
             .quote-box { padding: 40px; }
             .quote-box blockquote { font-size: 1.5rem; }
             .form-card { padding: 30px; }
-            
-            /* Adjust logo on mobile to be slightly smaller if needed */
             .logo-img { height: 50px; } 
         }
     </style>
@@ -691,7 +695,8 @@
     </nav>
 
     <header class="hero">
-        <div id="p5-container"></div> <div class="container hero-content">
+        <div id="p5-container"></div>
+        <div class="container hero-content">
             <h1>Let us take care<br>of your taxes.</h1>
             <p>
                 Experienced tax advisors and financial planners. 
@@ -919,71 +924,82 @@
 
     <script>
         let particles = [];
-        // Brand colors for the animation
         let colors = [
             [37, 99, 235],  // Royal Blue
             [245, 158, 11], // Gold
             [255, 255, 255] // White
         ];
+        
+        // This variable prevents the animation from resetting 
+        // when the mobile address bar hides/shows
+        let currentWidth = 0;
 
         function setup() {
             let canvas = createCanvas(windowWidth, windowHeight);
             canvas.parent('p5-container');
             
-            // Initial particle creation
-            let density = Math.floor(windowWidth / 15); 
+            currentWidth = windowWidth;
+            initParticles();
+        }
+
+        function initParticles() {
+            particles = [];
+            
+            // OPTIMIZATION: Reduce particles on small screens
+            // Divide width by a higher number on mobile to get fewer particles
+            let divider = windowWidth < 600 ? 25 : 15;
+            let density = Math.floor(windowWidth / divider); 
+            
             for (let i = 0; i < density; i++) {
                 particles.push(new Particle());
             }
         }
 
         function draw() {
-            clear(); // Use clear so we see the navy CSS background
+            clear(); 
             
-            // Loop through particles
             for (let i = 0; i < particles.length; i++) {
                 let p = particles[i];
                 p.update();
                 p.show();
-                p.connect(particles);
+                p.connect();
             }
         }
 
         function windowResized() {
-            resizeCanvas(windowWidth, windowHeight);
-            particles = [];
-            let density = Math.floor(windowWidth / 15); 
-            for (let i = 0; i < density; i++) {
-                particles.push(new Particle());
+            // ONLY resize if the WIDTH changes.
+            // This prevents reset loops on mobile scroll.
+            if (windowWidth !== currentWidth) {
+                resizeCanvas(windowWidth, windowHeight);
+                currentWidth = windowWidth;
+                initParticles();
             }
         }
 
         class Particle {
             constructor() {
-                // Random position
                 this.pos = createVector(random(width), random(height));
-                // Velocity: Slight upward and right movement (Growth)
                 this.vel = createVector(random(0.5, 2), random(-0.5, -2));
                 this.size = random(2, 5);
                 this.color = random(colors);
-                this.baseAlpha = random(50, 200);
+                this.baseAlpha = random(50, 150);
             }
 
             update() {
                 this.pos.add(this.vel);
 
-                // Mouse Interaction: Attraction/Connection
+                // Mouse interaction with simplified distance check
                 let mouse = createVector(mouseX, mouseY);
                 let d = dist(this.pos.x, this.pos.y, mouse.x, mouse.y);
                 
-                // If mouse is close, accelerate towards it slightly or brighten
-                if (d < 150) {
+                // If mouse is active (not 0,0) and close, slightly grow
+                if (d < 150 && (mouseX !== 0 && mouseY !== 0)) {
                     this.size = lerp(this.size, 6, 0.1);
                 } else {
                     this.size = lerp(this.size, 3, 0.1);
                 }
 
-                // Wrap around edges to create continuous flow
+                // Wrap around edges
                 if (this.pos.x > width) this.pos.x = 0;
                 if (this.pos.x < 0) this.pos.x = width;
                 if (this.pos.y < 0) this.pos.y = height;
@@ -992,25 +1008,20 @@
 
             show() {
                 noStroke();
-                // Color with transparency
                 fill(this.color[0], this.color[1], this.color[2], this.baseAlpha);
                 ellipse(this.pos.x, this.pos.y, this.size);
             }
 
-            connect(particles) {
-                // Connect to mouse if close
+            connect() {
                 let mouse = createVector(mouseX, mouseY);
                 let dMouse = dist(this.pos.x, this.pos.y, mouse.x, mouse.y);
                 
-                if (dMouse < 150) {
+                // Draw line only if mouse is on canvas (fixes mobile weirdness)
+                if (dMouse < 150 && (mouseX !== 0 && mouseY !== 0)) {
                     stroke(this.color[0], this.color[1], this.color[2], 100);
                     strokeWeight(1);
                     line(this.pos.x, this.pos.y, mouse.x, mouse.y);
                 }
-
-                // Connect to other nearby particles (creates the mesh)
-                // We limit loop to check fewer particles for performance
-                // This is a simple neighbor check
             }
         }
     </script>
